@@ -1,0 +1,56 @@
+name: Generate
+
+on:
+  schedule:
+    # Runs "Every 12 hours" (see https://crontab.guru)
+    - cron: '0 */12 * * *'
+  push:
+    branches:
+      - main
+
+jobs:
+  generate:
+    name: Generate
+    runs-on: ubuntu-latest
+    steps:
+    
+      - uses: actions/checkout@v3
+      
+      - name: Use Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: '*'
+          
+      - name: Install NSwag
+        run: npm install nswag -g
+
+      - name: Generate EvmApi Client
+        run: nswag run NSwag/EvmApi.nswag
+
+      - name: Generate StreamsApi Client
+        run: nswag run NSwag/StreamsApi.nswag
+
+      - name: "File changes detected: Create PR"
+        id: create-pr
+        uses: peter-evans/create-pull-request@v4
+        with:
+          add-paths: |
+            Runtime/**/*
+          commit-message: 'fix: automatic api update'
+          committer: 'Moralis CI/CD <noreply@github.com>'
+          branch: generate
+          base: main
+          title: 'Update SDK'
+          body: |
+            This PR was automatically opened via Github Actions.
+            New Api changes have been detected. To release:
+            1. Make any manual changes that are needed
+            2. Merge this PR to `main`
+            3. Wait for the next Github Action to do an automatic release
+            **Note that this PR is automatically updated when more changes are made to the APIs.**
+          labels: 'Automated PR'
+          team-reviewers: |
+            owners
+            maintainers
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
